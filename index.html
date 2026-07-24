@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Masters Swimming Age-Grading — Stroke Comparison by Age</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #111; }
+  h1 { font-size: 20px; font-weight: 600; }
+  h2 { font-size: 15px; font-weight: 600; color: #444; margin-top: 40px; }
+  p.note { font-size: 13px; color: #666; }
+  select { font-size: 14px; padding: 6px 10px; margin-right: 12px; border: 1px solid #ccc; border-radius: 6px; }
+  .chart-wrap { position: relative; width: 100%; height: 320px; margin: 16px 0 8px; }
+  #pillRow button { font-size: 12px; padding: 5px 10px; border-radius: 999px; cursor: pointer; }
+  #capNote { font-size: 12px; color: #888; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<h1>Physical degradation by age — stroke comparison (age-grading factors)</h1>
+<p class="note">Metric: USMS age-grading performance ratio — each age group's Top-10 5th-place time in 2004, expressed as a ratio to that event's fastest (peak) age-group time (1.0000 = peak). Source: <a href="https://www.usms.org/fitness-and-training/articles-and-videos/articles/age-grading" target="_blank">"Age Grading," David Nordstrom, USMS, 2006</a>, based on 2004 Top-10 results. Click strokes below to add/remove them from the comparison (up to 8 at once).</p>
+
+<div style="margin: 16px 0;">
+  <select id="genderSel">
+    <option value="M">Men</option>
+    <option value="W">Women</option>
+  </select>
+</div>
+
+<div id="pillRow" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px;"></div>
+<div id="capNote"></div>
+
+<h2>Performance ratio vs age (1.000 = peak age-group pace)</h2>
+<div class="chart-wrap"><canvas id="ratioChart" role="img" aria-label="Multi-line chart comparing age-grading performance ratio by age group across selected strokes.">Performance ratio by age group for each selected stroke.</canvas></div>
+
+<h2>Annualized rate of decline by age band (% slower per year, side by side by stroke)</h2>
+<div class="chart-wrap"><canvas id="rateChart" role="img" aria-label="Grouped bar chart of annualized percent decline per year between age bands, one bar per selected stroke shown side by side within each age band.">Annualized percent decline per year, grouped by stroke.</canvas></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const AGES = {
+  M: ["19-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79","80-84"],
+  W: ["19-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79"]
+};
+const MID = { "19-24":21.5,"25-29":27,"30-34":32,"35-39":37,"40-44":42,"45-49":47,"50-54":52,"55-59":57,"60-64":62,"65-69":67,"70-74":72,"75-79":77,"80-84":82 };
+
+const DATA = {
+  M: {
+    "50 Free":[.9586,1.0000,.9604,.9564,.9387,.9266,.9053,.8720,.8189,.7776,.7390,.6478,.5743],
+    "100 Free":[.9556,.9989,1.0000,.9580,.9381,.9247,.9076,.8786,.8043,.7582,.7117,.6155,.5485],
+    "200 Free":[.9743,1.0000,.9918,.9928,.9822,.9328,.9331,.8816,.8206,.7403,.7023,.6093,.5275],
+    "500 Free":[.9709,.9817,.9839,1.0000,.9909,.9350,.9393,.8645,.8181,.7736,.7223,.5871,.4948],
+    "1000 Free":[.9944,.9695,.9834,.9945,1.0000,.9827,.9592,.9089,.8128,.7918,.7148,.5851,.4609],
+    "1650 Free":[.9454,.9446,.9694,1.0000,.9808,.9564,.9479,.8730,.8080,.7756,.7133,.5952,.4644],
+    "50 Back":[.9608,1.0000,.9748,.9729,.9571,.9257,.9031,.8404,.8244,.7525,.7012,.6146,.5670],
+    "100 Back":[.9564,1.0000,.9801,.9459,.9464,.9157,.8885,.8251,.7812,.7006,.6850,.6145,.5219],
+    "200 Back":[.9977,1.0000,.9991,.9821,.9890,.9577,.9251,.8566,.8087,.7211,.7172,.5793,.5369],
+    "50 Breast":[.9753,1.0000,.9788,.9913,.9743,.9542,.8906,.8749,.8244,.7593,.7458,.6605,.5539],
+    "100 Breast":[.9897,1.0000,.9747,.9840,.9850,.9443,.8849,.8661,.8019,.7581,.7073,.6271,.5167],
+    "200 Breast":[.9653,1.0000,.9469,.9885,.9659,.9524,.9025,.8750,.8240,.7238,.6804,.6268,.4660],
+    "50 Fly":[.9547,1.0000,.9685,.9491,.9507,.9229,.8992,.8656,.8308,.7565,.7084,.5682,.4828],
+    "100 Fly":[.9513,1.0000,.9687,.9565,.9665,.9275,.9088,.8453,.7808,.6766,.6382,.5162,.3588],
+    "200 Fly":[.9142,1.0000,.9437,.9811,.9626,.9154,.9013,.7984,.7179,.6395,.5827,.4453,.3125],
+    "100 IM":[.9581,1.0000,.9782,.9508,.9743,.9231,.9067,.8517,.8065,.7392,.7071,.5971,.5166],
+    "200 IM":[.9468,1.0000,.9741,.9551,.9775,.9146,.8995,.8459,.7841,.7035,.6675,.5903,.4552],
+    "400 IM":[.9771,1.0000,.9585,.9775,.9658,.9262,.9158,.8564,.7621,.6880,.6461,.5510,.3877]
+  },
+  W: {
+    "50 Free":[.9883,1.0000,.9685,.9731,.9891,.9421,.9076,.8165,.7812,.7253,.6489,.6155],
+    "100 Free":[.9795,1.0000,.9976,.9891,.9849,.9361,.8892,.8047,.7447,.7223,.6240,.5703],
+    "200 Free":[.9839,.9781,.9515,1.0000,.9553,.9105,.8748,.7941,.7143,.6967,.6246,.5593],
+    "500 Free":[.9980,.9857,.9670,1.0000,.9680,.9293,.8956,.8232,.7218,.6995,.6480,.5755],
+    "1000 Free":[.9305,.9243,.9548,1.0000,.9383,.9239,.8569,.8084,.7000,.6873,.6162,.5414],
+    "1650 Free":[.9592,.9459,.9672,1.0000,.9665,.9265,.8500,.8327,.6982,.6929,.6129,.5247],
+    "50 Back":[1.0000,.9893,.9930,.9882,.9665,.9410,.8741,.7950,.7438,.6841,.6128,.5711],
+    "100 Back":[1.0000,.9937,.9923,.9992,.9514,.9283,.8681,.7825,.7221,.6789,.5972,.5515],
+    "200 Back":[.9969,.9879,.9778,1.0000,.9603,.9175,.8670,.7913,.7067,.6847,.6181,.5421],
+    "50 Breast":[1.0000,.9683,.9754,.9615,.9595,.9407,.8484,.8339,.7528,.6838,.6584,.5550],
+    "100 Breast":[1.0000,.9929,.9764,.9952,.9719,.9445,.8694,.8402,.7372,.6979,.6612,.5677],
+    "200 Breast":[1.0000,.9794,.9696,.9918,.9619,.9408,.8623,.8194,.7374,.6805,.6553,.5654],
+    "50 Fly":[.9784,1.0000,.9802,.9653,.9845,.9207,.8977,.7998,.7150,.6494,.5726,.5072],
+    "100 Fly":[.9603,1.0000,.9750,.9813,.9666,.8910,.8582,.7135,.6503,.6089,.5135,.4214],
+    "200 Fly":[1.0000,.9888,.9633,.9938,.9388,.9169,.7755,.7164,.6515,.5688,.4876,.4339],
+    "100 IM":[.9890,1.0000,.9673,.9761,.9671,.9176,.8587,.7992,.7397,.6910,.5856,.5007],
+    "200 IM":[.9772,.9908,.9630,1.0000,.9477,.9051,.8323,.7798,.7216,.6635,.6031,.5261],
+    "400 IM":[1.0000,.9824,.9560,.9886,.9501,.9060,.8218,.7685,.6842,.6258,.6110,.4395]
+  }
+};
+
+const PALETTE = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#4a3aa7','#e34948'];
+const DASH = [[],[6,3],[2,2],[8,2,2,2],[6,3],[2,2],[8,2,2,2],[]];
+const SHAPES = ['circle','rect','triangle','rectRot','star','crossRot','circle','rect'];
+const MAX_SEL = 8;
+let selected = ["100 Free","100 Fly","100 Breast","100 Back"];
+
+const genderSel = document.getElementById('genderSel');
+const pillRow = document.getElementById('pillRow');
+const capNote = document.getElementById('capNote');
+
+function renderPills(){
+  const events = Object.keys(DATA[genderSel.value]);
+  pillRow.innerHTML = events.map(ev => {
+    const idx = selected.indexOf(ev);
+    const isOn = idx > -1;
+    const c = isOn ? PALETTE[idx % PALETTE.length] : '#ccc';
+    const style = isOn
+      ? `background:${c}22;border:1px solid ${c};color:${c};`
+      : `background:#fff;border:1px solid #ddd;color:#666;`;
+    return `<button data-ev="${ev}" style="${style}">${ev}</button>`;
+  }).join('');
+  capNote.textContent = selected.length + ' of ' + MAX_SEL + ' strokes selected (max ' + MAX_SEL + ')';
+  pillRow.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const ev = btn.getAttribute('data-ev');
+      const i = selected.indexOf(ev);
+      if (i > -1){
+        selected.splice(i, 1);
+      } else {
+        if (selected.length >= MAX_SEL) return;
+        selected.push(ev);
+      }
+      renderPills();
+      render();
+    });
+  });
+}
+
+function computeRates(labels, ratios){
+  const rates = [];
+  for (let i = 1; i < ratios.length; i++){
+    const dr = ratios[i] - ratios[i-1];
+    const pctTotal = dr / ratios[i-1] * 100;
+    const years = MID[labels[i]] - MID[labels[i-1]];
+    rates.push(Math.round(-1 * (pctTotal / years) * 100) / 100);
+  }
+  return rates;
+}
+
+let ratioChart, rateChart;
+function render(){
+  const g = genderSel.value;
+  const labels = AGES[g];
+  const rateLabels = labels.slice(1);
+
+  const ratioDatasets = selected.map((ev, i) => ({
+    label: ev,
+    data: DATA[g][ev],
+    borderColor: PALETTE[i % PALETTE.length],
+    backgroundColor: PALETTE[i % PALETTE.length],
+    borderDash: DASH[i % DASH.length],
+    pointStyle: SHAPES[i % SHAPES.length],
+    borderWidth: 2,
+    pointRadius: 3,
+    pointBorderColor: '#fff',
+    pointBorderWidth: 1,
+    fill: false,
+    tension: 0.15
+  }));
+
+  const rateDatasets = selected.map((ev, i) => ({
+    label: ev,
+    data: computeRates(labels, DATA[g][ev]),
+    backgroundColor: PALETTE[i % PALETTE.length],
+    borderRadius: 3
+  }));
+
+  if (!ratioChart){
+    ratioChart = new Chart(document.getElementById('ratioChart'), {
+      type: 'line',
+      data: { labels: labels, datasets: ratioDatasets },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 } } },
+          tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': ' + ctx.raw.toFixed(4) } }
+        },
+        scales: { x: { grid: { display: false } }, y: { min: 0.3, max: 1.02, grid: { color: '#eee' } } }
+      }
+    });
+    rateChart = new Chart(document.getElementById('rateChart'), {
+      type: 'bar',
+      data: { labels: rateLabels, datasets: rateDatasets },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } },
+          tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': ' + (ctx.raw>=0?'+':'') + ctx.raw.toFixed(2) + '%/yr' } }
+        },
+        scales: {
+          x: { stacked: false, grid: { display: false }, ticks: { font: { size: 10 } } },
+          y: { stacked: false, grid: { color: '#eee' }, ticks: { callback: (v) => v+'%' } }
+        }
+      }
+    });
+  } else {
+    ratioChart.data.labels = labels;
+    ratioChart.data.datasets = ratioDatasets;
+    ratioChart.update();
+    rateChart.data.labels = rateLabels;
+    rateChart.data.datasets = rateDatasets;
+    rateChart.update();
+  }
+}
+
+genderSel.addEventListener('change', () => { render(); renderPills(); });
+renderPills();
+render();
+</script>
+</body>
+</html>
