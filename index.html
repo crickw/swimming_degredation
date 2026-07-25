@@ -12,12 +12,16 @@
   .chart-wrap { position: relative; width: 100%; height: 320px; margin: 16px 0 8px; }
   #pillRow button { font-size: 12px; padding: 5px 10px; border-radius: 999px; cursor: pointer; }
   #capNote { font-size: 12px; color: #888; margin-bottom: 20px; }
+  nav { font-size: 14px; margin-bottom: 20px; }
+  nav a { color: #2a78d6; text-decoration: none; margin-right: 16px; }
+  nav a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
+<nav><a href="index.html">Stroke comparison</a><a href="predictor.html">Time predictor</a></nav>
 <h1>Physical degradation by age — stroke comparison (age-grading factors)</h1>
 <p class="note">Metric: USMS age-grading performance ratio — each age group's Top-10 5th-place time in 2004, expressed as a ratio to that event's fastest (peak) age-group time (1.0000 = peak). Source: <a href="https://www.usms.org/fitness-and-training/articles-and-videos/articles/age-grading" target="_blank">"Age Grading," David Nordstrom, USMS, 2006</a>, based on 2004 Top-10 results. Click strokes below to add/remove them from the comparison (up to 8 at once).</p>
-<p class="note">Click any stroke pill (colored when active) to add/remove it from the comparison, up to 8 at once — defaults to 100 Free, Fly, Breast, Back for men. The top chart overlays lines (color + dash pattern + marker shape per stroke, so it's readable without color alone), and the bottom chart stacks each stroke's annualized decline rate per age band.</p>
+
 <div style="margin: 16px 0;">
   <select id="genderSel">
     <option value="M">Men</option>
